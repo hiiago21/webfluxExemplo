@@ -1,33 +1,32 @@
 package com.apirest.webflux.controller;
 
+import com.apirest.webflux.document.Categoria;
 import com.apirest.webflux.document.PlayList;
 import com.apirest.webflux.services.PlayListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @CrossOrigin(origins = "*")
-//@RestController
-//@RequestMapping("/playlist")
+@RestController
+@RequestMapping("/playlist")
 @RequiredArgsConstructor
 public class PlayListController {
 
     private final PlayListService service;
 
-    @GetMapping
-    public Flux<PlayList> getPlaylist(){
-        return service.findAll();
+    @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<Tuple2<Long,PlayList>> getPlaylist(){
+        Flux<Long> intervalo = Flux.interval(Duration.ofSeconds(1));
+        return Flux.zip(intervalo, service.findAll().limitRate(100));
     }
-
 
     @GetMapping(value="/{id}")
     public Mono<PlayList> getPlaylistId(@PathVariable String id){
@@ -39,31 +38,13 @@ public class PlayListController {
         return service.save(playlist);
     }
 
-//    @GetMapping(value="/webflux", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-//    public Flux<Tuple2<Long, PlayList>> getPlaylistByWebflux(){
-//
-//        System.out.println("---Start get Playlists by WEBFLUX--- " + LocalDateTime.now());
-//        Flux<Long> interval = Flux.interval(Duration.ofSeconds(10));
-//        Flux<PlayList> playlistFlux = service.findAll();
-//
-//        return Flux.zip(interval, playlistFlux);
-//
-//    }
-//
-//    @GetMapping(value="/mvc")
-//    public List<String> getPlaylistByMvc() throws InterruptedException {
-//
-//        System.out.println("---Start get Playlists by MVC--- " + LocalDateTime.now());
-//        List<String> playlistList = new ArrayList<>();
-//        playlistList.add("Java 8");
-//        playlistList.add("Spring Security");
-//        playlistList.add("Github");
-//        playlistList.add("Deploy de uma aplicação java no IBM Cloud");
-//        playlistList.add("Bean no Spring Framework");
-//        TimeUnit.SECONDS.sleep(15);
-//
-//        return playlistList;
-//
-//    }
+    @GetMapping(value = "/categorias", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<List<Categoria>>> findAll(){
+        return Flux.interval(Duration.ofSeconds(5))
+                .map(sequence -> ServerSentEvent.<List<Categoria>>builder()
+                        .id(String.valueOf(sequence))
+                        .data(service.findAllCategorias())
+                        .build());
+    }
 
 }

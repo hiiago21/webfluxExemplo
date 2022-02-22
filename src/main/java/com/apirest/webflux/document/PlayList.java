@@ -17,4 +17,5 @@ public class PlayList {
     @Id
     private String id;
     private String nome;
+    private Integer idCategoria;
 }
